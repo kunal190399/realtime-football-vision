@@ -53,7 +53,7 @@ The first run downloads the configured model weights. For GPU inference, install
 ## Roadmap
 
 - [x] Stage 1 scaffold: video ingestion, tracking, pose overlay and metrics
-- [ ] Add sports-specific player/ball dataset and detector training
+- [x] Stage 2 experimental person-only ByteTrack configuration and tracking evaluation protocol\n- [ ] Add sports-specific player/ball dataset and detector training
 - [ ] Add temporal ball tracking and possession estimation
 - [ ] Add calibrated shot/goal candidate detection and event evaluation
 - [ ] Add mAP, precision-recall, event F1 and latency benchmark reports
