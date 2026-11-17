@@ -8,6 +8,12 @@ A prototype computer-vision pipeline for analysing football video-game broadcast
 
 This KTP-oriented prototype explores real-time computer vision for football broadcast analysis. Stage 1 establishes the video-processing foundation; it does not yet claim validated match-event recognition. The initial demonstrator can be exercised with football gameplay footage while the later work will target real broadcast footage and sport-specific datasets.
 
+## Stage 1 dashboard
+
+The dashboard layout is shown below. The public illustration intentionally omits the original broadcast preview; use footage you are licensed to share when reproducing the demonstration.
+
+![Stage 1 dashboard illustration](docs/images/stage1-dashboard.svg)
+
 ## Features
 
 - Video upload and processing through a Streamlit interface
