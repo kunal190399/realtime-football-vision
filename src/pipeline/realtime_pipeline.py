@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 import cv2
+from src.evaluation.runtime import RuntimeProfile
 from src.tracking.ball_motion import BallMotion
 from src.tracking.possession import PossessionEstimator
 from src.tracking.tracker import PlayerTracker
@@ -13,11 +14,14 @@ class RealtimePipeline:
     def __init__(self, detection_weights: str = "yolo11n.pt",
                  pose_weights: str = "yolo11n-pose.pt", device: str | None = None,
                  confidence: float = 0.25) -> None:
+        self.settings = dict(mode="vision", detector=Path(detection_weights).name,
+                             pose=Path(pose_weights).name, requested_device=device or "auto", confidence=confidence)
         self.tracker = PlayerTracker(detection_weights, confidence, device=device)
         self.pose = PoseEstimator(pose_weights, device=device)
 
     def process_video(self, input_path: str, output_path: str,
                       max_frames: int | None = None, possession: bool = False) -> dict:
+        runtime = RuntimeProfile()
         cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
             raise ValueError(f"Could not open video: {input_path}")
@@ -34,14 +38,20 @@ class RealtimePipeline:
         try:
             if not writer.isOpened():
                 raise ValueError("Could not open the video encoder.")
-            while True:
+            while max_frames is None or count < max_frames:
+                started = time.perf_counter()
                 ok, frame = cap.read()
-                if not ok or (max_frames is not None and count >= max_frames):
+                if not ok:
                     break
+                runtime.record("Video decode", started)
                 started = time.perf_counter()
                 tracked = self.tracker.track_result(frame, include_ball=possession)
+                runtime.record("Detection and tracking", started)
+                stage = time.perf_counter()
                 annotated = self.pose.annotate(frame, canvas=tracked.plot())
+                runtime.record("Pose and model overlays", stage)
                 if possession:
+                    stage = time.perf_counter()
                     observation = estimator.update(self.tracker.observations(tracked))
                     motion.annotate_observation(frame, observation)
                     source = observation["ball_source"]
@@ -54,12 +64,15 @@ class RealtimePipeline:
                     label = f"track {owner}" if owner is not None else "unknown"
                     cv2.putText(annotated, f"Possession candidate: {label}", (20, 65),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                    runtime.record("Possession and overlay", stage)
                 elapsed = time.perf_counter() - started
                 total_inference += elapsed
                 fps = 1.0 / max(elapsed, 1e-9)
                 cv2.putText(annotated, f"Inference: {elapsed*1000:.1f} ms | FPS: {fps:.1f}",
                             (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                stage = time.perf_counter()
                 writer.write(annotated)
+                runtime.record("Video write", stage)
                 count += 1
         finally:
             cap.release()
@@ -67,6 +80,8 @@ class RealtimePipeline:
         if not count:
             raise ValueError("No video frames could be processed.")
         return {
+            "runtime": runtime.report(count, fps_in, width, height,
+                                      dict(self.settings, possession=possession, max_frames=max_frames)),
             "timeline": timeline,
             "frames_processed": count,
             "input_fps": fps_in,

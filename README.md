@@ -71,6 +71,12 @@ To create match highlights, select **Export one highlight per score update** bef
 
 The preset expects the single-digit FRA–AUS score graphic in the same position and team order as the supplied 16:9 footage. For another fixed graphic, select **Custom layout**. Enter the two team codes and each digit box as `x, y, width, height` in the 1280 × 720 preview, even if your video has another resolution. Pick light-on-dark or dark-on-light digits, move the preview to a time with the scoreboard visible, and use **Check preview score** before scanning. The same settings apply to the entire upload and flow through to the CSV and highlight filenames. Custom mode supports single-digit scores with contrasting backgrounds. Moving graphics and changes of team order require separate scans. The reader samples approximately four times per second and accepts a one-goal increment after three consecutive matching score pairs. It ignores downward changes, rebases on larger forward jumps, and establishes a fresh baseline after a prolonged unreadable interval. A timestamp is the first sample of the confirmed display change. The ball can cross the goal line earlier.
 
+## Measure processing speed
+
+After running either analysis, expand **Runtime benchmark** and download the JSON. Playback speed is the duration of the processed frames divided by elapsed processing time. A value of 1× means processing took as long as playing the source. A frame limit uses only the processed portion of the video.
+
+The timer begins when the pipeline or scanner opens the input and includes resource finalisation, model warm-up in the processing loop, and video writing where applicable. Upload, model construction or download, highlight export and browser rendering are outside this measurement. Stage totals cover timed operations, with remaining wall time spent in setup, finalisation and other work. Mean and P95 are per stage call. In scoreboard mode score OCR runs on sampled frames and clock OCR runs around changes. In vision mode the pose stage includes drawing the model overlays.
+
 ## Evaluate scoreboard timestamps
 
 From the repository root, compare a dashboard CSV with hand-labelled updates for one source video:

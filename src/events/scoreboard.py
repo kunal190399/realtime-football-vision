@@ -1,6 +1,7 @@
 """Read score updates from fixed-position broadcast score graphics."""
 from __future__ import annotations
 
+from time import perf_counter
 import re
 import shutil
 import subprocess
@@ -10,6 +11,7 @@ from typing import Callable
 import cv2
 import numpy as np
 
+from src.evaluation.runtime import RuntimeProfile
 from src.events.match_clock import read_clock, review_changes
 
 
@@ -191,6 +193,7 @@ def scan_scoreboard(path: str, layout: ScoreLayout | None = None,
         x, y, w, h = clock_box
         if min(x, y) < 0 or min(w, h) < 3 or x+w > 1280 or y+h > 720:
             raise ValueError("Clock box must fit inside the 1280 × 720 preview.")
+    runtime = RuntimeProfile()
     cap = cv2.VideoCapture(path)
     reader, monitor = ScoreReader(layout=layout), ScoreMonitor(layout.teams if layout else ("FRA", "AUS"))
     events = []
@@ -200,11 +203,19 @@ def scan_scoreboard(path: str, layout: ScoreLayout | None = None,
         fps = cap.get(cv2.CAP_PROP_FPS)
         if not cap.isOpened() or not np.isfinite(fps) or fps <= 0:
             raise ValueError("Could not read the video or its frame rate.")
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         stride = max(1, round(fps / 4))
-        while cap.grab():
+        while True:
+            started = perf_counter()
+            if not cap.grab():
+                break
+            runtime.record("Video grab", started)
             if frame % stride == 0:
+                started = perf_counter()
                 ok, pixels = cap.retrieve()
                 score = reader.read(pixels) if ok else None
+                runtime.record("Score sampling and OCR", started)
                 if clock_box is not None:
                     observations.append((frame, score))
                 samples += 1
@@ -218,9 +229,16 @@ def scan_scoreboard(path: str, layout: ScoreLayout | None = None,
         review = []
         if clock_box is not None:
             def clock_at(index):
-                return read_clock(cap, index, clock_box, layout.light_digits if layout else True)
+                started = perf_counter()
+                clock = read_clock(cap, index, clock_box, layout.light_digits if layout else True)
+                runtime.record("Clock seek and OCR", started)
+                return clock
             events, review = review_changes(observations, fps, monitor.teams, events, clock_at)
-        return dict(events=events, review=review, samples=samples, readable=readable, frames=frame,
+        result = dict(events=events, review=review, samples=samples, readable=readable, frames=frame,
                     duration_seconds=frame / fps)
     finally:
         cap.release()
+    settings = dict(mode="scoreboard", layout=asdict(layout) if layout else "France–Australia",
+                    clock_box=clock_box, sample_stride=stride)
+    result["runtime"] = runtime.report(frame, fps, width, height, settings)
+    return result

@@ -4,6 +4,7 @@ import io
 import tempfile
 from pathlib import Path
 import streamlit as st
+from app.runtime_report import show_runtime
 from app.score_calibration import select_layout
 from src.detection.football_weights import football_weights
 from app.score_review import show_score_scan
@@ -77,6 +78,7 @@ if uploaded:
                                                       max_frames=max_frames or None, possession=possession)
                     video_bytes = output_path.read_bytes()
                 st.success("Processing complete")
+                show_runtime(metrics["runtime"])
                 a, b, c = st.columns(3)
                 a.metric("Frames processed", metrics["frames_processed"])
                 b.metric("Average inference", f"{metrics['average_inference_ms']:.1f} ms/frame")

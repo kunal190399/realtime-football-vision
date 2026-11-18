@@ -7,6 +7,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import streamlit as st
+from app.runtime_report import show_runtime
 
 from src.events.highlights import clip_window, export_highlights
 from src.events.scoreboard import scan_scoreboard
@@ -101,6 +102,8 @@ def show_score_scan(uploaded, layout, clock_box, make_clips, lead, tail):
     if not state:
         return
     report = state["report"]
+    if "runtime" in report:
+        show_runtime(report["runtime"])
     if state.get("auto_zip"):
         st.download_button("Download highlights and index", state["auto_zip"], file_name="highlights.zip",
                            mime="application/zip", on_click="ignore")
