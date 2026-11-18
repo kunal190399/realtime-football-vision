@@ -59,11 +59,17 @@ Select **Use football-specific detector (experimental)** and **Estimate player p
 
 The model was trained on amateur football filmed with fixed cameras. Broadcast camera movement, close-ups and cuts can affect both the detector and the tracker. Model author, training conditions and AGPL-3.0 model licence are documented in the [pinned model card](https://huggingface.co/Dura-S/reco-yolo26s-football/blob/d20231484951d4ebf3f9f2a7437aa922a4c1b395/README.md).
 
+## Scoreboard updates
+
+Choose **Scoreboard updates**, upload a clip and click **Scan scoreboard**. This mode scans the full video independently of the player models and exports CSV rows with the team, old and new scores, first stable sample time and confirmation time. It requires Tesseract OCR with English language data on the system PATH (Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-eng`; macOS with Homebrew: `brew install tesseract`).
+
+The preset expects the single-digit FRA–AUS score graphic in the same position and team order as the supplied 16:9 footage. Use a separate calibration for other graphics, team orders, cropped video or letterboxing. Team names are preset labels. The reader samples approximately four times per second and accepts a one-goal increment after three consecutive matching score pairs. It ignores downward changes, rebases on larger forward jumps, and establishes a fresh baseline after a prolonged unreadable interval. A timestamp is the first sample of the confirmed display change. The ball can cross the goal line earlier.
+
 ## Current limitations
 
 1. COCO-pretrained YOLO detects people but does not provide a reliable, dedicated football detector for broadcast footage.
 2. Broadcast overlays, camera cuts, miniature players and stylised game graphics can differ substantially from natural-image training data.
-3. Goal and shot events are not yet implemented. These require a sports-specific ball/player detector, temporal tracking and usually scoreboard/goal-region calibration.
+3. Visual goal-line crossing and shot events are not yet implemented. These require a sports-specific ball/player detector, temporal tracking and usually scoreboard/goal-region calibration.
 4. Reported FPS is model inference throughput and excludes some I/O and UI overhead. Results depend on hardware, model size, resolution and video codec.
 
 ## Roadmap

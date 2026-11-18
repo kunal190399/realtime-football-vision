@@ -39,3 +39,7 @@ Run the same clip and settings. Compare the new `ball_source` column against the
 A separate one-second excerpt starting 56.00 seconds into the same source video exercised a close-up with a fresh tracker. Of 50 frames, 11 had tracked positions, one had a motion estimate and 38 were unknown. The ball was visible at all 12 reported positions. Without the pitch-colour check, this close-up yielded six additional correct positions. The check trades those positions for fewer advertising-board matches in the opening clip. Neither excerpt has exhaustive ground truth for visibility or possession.
 
 Across the opening clip, all 30 previous tracked positions were retained. Fourteen additional frames had untracked detections, 15 had motion estimates, and 541 remained unknown. All 29 new positions were visually reviewed on the original footage. No player possession was confirmed. The pitch-colour check was selected using this clip, so it needs evaluation on other matches.
+
+## Scoreboard display changes
+
+The fixed FRA–AUS preset was checked through the Streamlit upload workflow using all 3,334 frames of the supplied 50 fps highlights. OCR returned scores on 278 of 278 samples. The five confirmed changes were 0–1 at 9.84 s, 1–1 at 24.72 s, 2–1 at 36.96 s, 3–1 at 48.00 s and 4–1 at 63.36 s. Before-and-after score crops were checked for each transition. Times identify the first sample of a stable reading on the video timeline. Camera edits and the broadcast update delay preclude using these values as goal-line crossing times.

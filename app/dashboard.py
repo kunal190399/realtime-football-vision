@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 import streamlit as st
 from src.detection.football_weights import football_weights
+from src.events.scoreboard import scan_scoreboard
 from src.pipeline.realtime_pipeline import RealtimePipeline
 
 st.set_page_config(page_title="Football Vision Lab", page_icon="⚽", layout="wide")
@@ -13,6 +14,33 @@ st.caption("Prototype: player tracking, pose estimation and inference profiling"
 st.caption("Possession estimates use the distance between a detected ball and nearby players. Review the video to check assignments.")
 
 uploaded = st.file_uploader("Upload a short gameplay/broadcast clip", type=["mp4", "mov", "avi"])
+mode = st.radio("Analysis", ["Players and ball", "Scoreboard updates"], horizontal=True)
+if mode == "Scoreboard updates":
+    st.caption("Preset for the France–Australia score graphic. Reads single-digit scores "
+               "in the full video and timestamps changes on the video clock.")
+    if uploaded and st.button("Scan scoreboard", type="primary"):
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                path = Path(temp_dir) / ("input" + Path(uploaded.name).suffix)
+                path.write_bytes(uploaded.getbuffer())
+                with st.spinner("Reading the scoreboard..."):
+                    report = scan_scoreboard(str(path))
+            st.write(f"{len(report['events'])} score updates. "
+                     f"Score readable in {report['readable']} of {report['samples']} samples.")
+            if report["events"]:
+                st.dataframe(report["events"], hide_index=True)
+                buffer = io.StringIO()
+                writer = csv.DictWriter(buffer, fieldnames=report["events"][0].keys())
+                writer.writeheader()
+                writer.writerows(report["events"])
+                st.download_button("Download score updates", buffer.getvalue(),
+                                   file_name="score-updates.csv", mime="text/csv", on_click="ignore")
+            elif not report["readable"]:
+                st.info("No readable scores. Check that the video uses the supported scoreboard layout.")
+        except Exception as exc:
+            st.error(f"Scoreboard scan failed: {exc}")
+    st.stop()
+
 with st.sidebar:
     st.header("Inference settings")
     specialist = st.checkbox("Use football-specific detector (experimental)")
