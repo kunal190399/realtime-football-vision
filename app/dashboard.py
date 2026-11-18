@@ -4,17 +4,22 @@ import io
 import tempfile
 from pathlib import Path
 import streamlit as st
+from src.detection.football_weights import football_weights
 from src.pipeline.realtime_pipeline import RealtimePipeline
 
 st.set_page_config(page_title="Football Vision Lab", page_icon="⚽", layout="wide")
 st.title("⚽ Real-Time Football Vision Lab")
 st.caption("Prototype: player tracking, pose estimation and inference profiling")
-st.warning("Baseline limitation: generic COCO weights are not trained for football broadcast footage. Ball and event detection require sports-specific data and calibration.")
+st.caption("Possession estimates use the distance between a detected ball and nearby players. Review the video to check assignments.")
 
 uploaded = st.file_uploader("Upload a short gameplay/broadcast clip", type=["mp4", "mov", "avi"])
 with st.sidebar:
     st.header("Inference settings")
-    detector_weights = st.text_input("Detection / tracking weights", "yolo11n.pt")
+    specialist = st.checkbox("Use football-specific detector (experimental)")
+    if specialist:
+        st.caption("reco YOLO26s · 1920 px · 40 MB on first run. CPU processing can be slow.")
+    else:
+        detector_weights = st.text_input("Detection / tracking weights", "yolo11n.pt")
     pose_weights = st.text_input("Pose weights", "yolo11n-pose.pt")
     confidence = st.slider("Confidence threshold", 0.05, 0.95, 0.25, 0.05)
     device = st.text_input("Device (blank = auto)", "")
@@ -30,6 +35,8 @@ if uploaded:
             input_path.write_bytes(uploaded.getbuffer())
             try:
                 with st.spinner("Loading models and processing video..."):
+                    if specialist:
+                        detector_weights = str(football_weights(Path.home() / ".cache" / "football-vision"))
                     pipeline = RealtimePipeline(detector_weights, pose_weights,
                                                 device=device or None, confidence=confidence)
                     metrics = pipeline.process_video(str(input_path), str(output_path),
@@ -43,6 +50,8 @@ if uploaded:
                 if possession:
                     rows = metrics["timeline"]
                     assigned = sum(row["possession_track_id"] is not None for row in rows)
+                    visible = sum(row["ball_x"] is not None for row in rows)
+                    st.write(f"Ball candidate in {visible} of {len(rows)} frames.")
                     st.write(f"Possession candidate assigned in {assigned} of {len(rows)} frames.")
                     csv_buffer = io.StringIO()
                     writer = csv.DictWriter(csv_buffer, fieldnames=rows[0].keys())

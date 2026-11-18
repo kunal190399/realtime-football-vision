@@ -42,6 +42,9 @@ class RealtimePipeline:
                 if possession:
                     observation = estimator.update(self.tracker.observations(tracked))
                     timeline.append(dict(frame=count, seconds=count / fps_in, **observation))
+                    if observation["ball_x"] is not None:
+                        centre = (round(observation["ball_x"]), round(observation["ball_y"]))
+                        cv2.circle(annotated, centre, 15, (0, 240, 255), 2, cv2.LINE_AA)
                     owner = observation["possession_track_id"]
                     label = f"track {owner}" if owner is not None else "unknown"
                     cv2.putText(annotated, f"Possession candidate: {label}", (20, 65),
