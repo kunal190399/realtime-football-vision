@@ -71,6 +71,16 @@ To create match highlights, select **Export one highlight per score update** bef
 
 The preset expects the single-digit FRA–AUS score graphic in the same position and team order as the supplied 16:9 footage. For another fixed graphic, select **Custom layout**. Enter the two team codes and each digit box as `x, y, width, height` in the 1280 × 720 preview, even if your video has another resolution. Pick light-on-dark or dark-on-light digits, move the preview to a time with the scoreboard visible, and use **Check preview score** before scanning. The same settings apply to the entire upload and flow through to the CSV and highlight filenames. Custom mode supports single-digit scores with contrasting backgrounds. Moving graphics and changes of team order require separate scans. The reader samples approximately four times per second and accepts a one-goal increment after three consecutive matching score pairs. It ignores downward changes, rebases on larger forward jumps, and establishes a fresh baseline after a prolonged unreadable interval. A timestamp is the first sample of the confirmed display change. The ball can cross the goal line earlier.
 
+## Evaluate scoreboard timestamps
+
+From the repository root, compare a dashboard CSV with hand-labelled updates for one source video:
+
+```bash
+python -m src.evaluation.score_updates examples/scoreboard-labels/france-australia.csv score-updates.csv --tolerance 0.25
+```
+
+Supply the clock-review CSV separately to measure reviewed changes, or pass both exports to evaluate all recognised changes together. With no prediction file the evaluator scores zero predictions. It prints JSON with precision, recall, F1, timing errors and the unmatched rows. The [evaluation protocol and results](docs/evaluation.md#timestamp-benchmark) describe the reference labels and units.
+
 ## Current limitations
 
 1. COCO-pretrained YOLO detects people but does not provide a reliable, dedicated football detector for broadcast footage.

@@ -51,3 +51,17 @@ Both the built-in and manually configured regions reproduced all five timestamps
 ### Match-clock continuity on edited footage
 
 A second 1280 × 720, 50 fps highlights edit used the same broadcast graphic with Argentina on the left and France on the right. The reader compared three-sample score runs across the full 62.06 seconds. Six increments were visible from 0–0 to 3–3. At 20.40 s the new score was 2–1. The previous 2–0 sample at 18.48 s displayed 79:25 and the new sample displayed 80:54. A two-second scoreboard-gap rule alone accepted this change. The clock check sends it to review. The other five changes span scoreboard gaps exceeding two seconds. None qualify for automatic highlights. In the France–Australia clip all five previously recorded updates pass the check. Neither clip validates the timing of the ball crossing the goal line.
+
+### Timestamp benchmark
+
+The two reference CSVs in `examples/scoreboard-labels/` use the video clock in seconds. For each known change, the source scoreboard was inspected at 0.1-second intervals and labelled at the first sampled frame with the new legible score. When the graphic returns after a cut, the label marks its return with the new score. Goal-line crossings and the exact change time between sampled frames are unlabelled. Both clips were previously used to develop or check the reader; these figures describe regression performance on this footage.
+
+Score each clip separately. Each reference can match one prediction with the same team and resulting score within ±0.25 s. Matching prioritises the number of pairs, then total absolute time error. A prediction outside the tolerance contributes one extra prediction and leaves its reference unmatched. Timing error is predicted time minus reference time; the mean absolute error uses matched rows only. An undefined metric is JSON null.
+
+| Clip and rows evaluated | Labels | Matched | Extra | Missed | F1 | Mean absolute time error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| France–Australia, accepted | 5 | 5 | 0 | 0 | 1.00 | 0.116 s |
+| Argentina–France, accepted only | 6 | 0 | 0 | 6 | 0.00 | — |
+| Argentina–France, review queue | 6 | 6 | 0 | 0 | 1.00 | 0.110 s |
+
+All six Argentine match changes were intentionally held for review by the continuity checks. The accepted-only row measures automatic export coverage against all visible score changes. It does not assess the correctness of the editorial decision to withhold a clip.
