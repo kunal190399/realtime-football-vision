@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 import cv2
+from src.tracking.ball_motion import BallMotion
 from src.tracking.possession import PossessionEstimator
 from src.tracking.tracker import PlayerTracker
 from src.pose.pose_estimator import PoseEstimator
@@ -28,6 +29,7 @@ class RealtimePipeline:
                                  fps_in, (width, height))
         count, total_inference = 0, 0.0
         estimator = PossessionEstimator()
+        motion = BallMotion(fps_in)
         timeline = []
         try:
             if not writer.isOpened():
@@ -41,10 +43,22 @@ class RealtimePipeline:
                 annotated = self.pose.annotate(frame, canvas=tracked.plot())
                 if possession:
                     observation = estimator.update(self.tracker.observations(tracked))
+                    xy = motion.update(frame, observation["ball_x"], observation["ball_y"])
+                    if xy is not None:
+                        observation["ball_x"], observation["ball_y"] = xy
+                        source = "motion"
+                    elif observation["ball_track_id"] is not None:
+                        source = "tracked"
+                    elif observation["ball_x"] is not None:
+                        source = "detected"
+                    else:
+                        source = "unknown"
+                    observation["ball_source"] = source
                     timeline.append(dict(frame=count, seconds=count / fps_in, **observation))
                     if observation["ball_x"] is not None:
                         centre = (round(observation["ball_x"]), round(observation["ball_y"]))
-                        cv2.circle(annotated, centre, 15, (0, 240, 255), 2, cv2.LINE_AA)
+                        colour = (255, 180, 0) if source == "motion" else (0, 240, 255)
+                        cv2.circle(annotated, centre, 15, colour, 2, cv2.LINE_AA)
                     owner = observation["possession_track_id"]
                     label = f"track {owner}" if owner is not None else "unknown"
                     cv2.putText(annotated, f"Possession candidate: {label}", (20, 65),

@@ -50,9 +50,12 @@ if uploaded:
                 if possession:
                     rows = metrics["timeline"]
                     assigned = sum(row["possession_track_id"] is not None for row in rows)
-                    visible = sum(row["ball_x"] is not None for row in rows)
-                    st.write(f"Ball candidate in {visible} of {len(rows)} frames.")
+                    observed = sum(row["ball_source"] in {"tracked", "detected"} for row in rows)
+                    estimated = sum(row["ball_source"] == "motion" for row in rows)
+                    st.write(f"Ball observed in {observed} of {len(rows)} frames. "
+                             f"Motion estimates in {estimated} additional frames.")
                     st.write(f"Possession candidate assigned in {assigned} of {len(rows)} frames.")
+                    st.caption("Yellow ring: direct observation. Blue ring: motion estimate.")
                     csv_buffer = io.StringIO()
                     writer = csv.DictWriter(csv_buffer, fieldnames=rows[0].keys())
                     writer.writeheader()

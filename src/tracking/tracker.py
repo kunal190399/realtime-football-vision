@@ -31,6 +31,22 @@ class PlayerTracker:
             elif name.lower() in {"football", "ball", "sports ball"}:
                 self.kinds[class_id] = "ball"
 
+        self.capture_ball = False
+        self.raw_ball = None
+        self.model.add_callback("on_predict_postprocess_end", self._capture_ball)
+
+    def _capture_ball(self, predictor):
+        # Registered before ByteTrack's postprocess callback, which replaces boxes.
+        boxes = predictor.results[0].boxes
+        self.raw_ball = None
+        if not self.capture_ball or boxes is None:
+            return
+        for box in boxes.cpu():
+            if self.kinds.get(int(box.cls.item())) == "ball":
+                confidence = float(box.conf.item())
+                if self.raw_ball is None or confidence > self.raw_ball.confidence:
+                    self.raw_ball = Track("ball", None, tuple(box.xyxy[0].tolist()), confidence)
+
     def track(self, frame: Any) -> Any:
         return self.track_result(frame).plot()
 
@@ -40,6 +56,7 @@ class PlayerTracker:
             raise ValueError("Detection weights require a person or player class.")
         if include_ball and "ball" not in self.kinds.values():
             raise ValueError("Possession analysis requires a ball class in the detection weights.")
+        self.capture_ball = include_ball
         return self.model.track(
             frame, persist=True, tracker=self.tracker, conf=self.confidence,
             classes=classes, device=self.device, verbose=False,
@@ -47,10 +64,12 @@ class PlayerTracker:
 
     def observations(self, result: Any) -> list[Track]:
         if result.boxes is None:
-            return []
+            return [self.raw_ball] if self.raw_ball is not None else []
         tracks = []
         for box in result.boxes.cpu():
             identity = int(box.id.item()) if box.id is not None else None
             tracks.append(Track(self.kinds[int(box.cls.item())], identity,
                                 tuple(box.xyxy[0].tolist()), float(box.conf.item())))
+        if self.raw_ball is not None and not any(t.kind == "ball" for t in tracks):
+            tracks.append(self.raw_ball)
         return tracks

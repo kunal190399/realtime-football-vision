@@ -49,6 +49,10 @@ Enable **Estimate player possession (experimental)** before processing a clip. U
 
 Download the frame timeline for zero-based frame indices, source-video timestamps in seconds, ball centre coordinates in pixels, and track IDs. Empty fields mean unknown. When multiple balls are visible, the pipeline follows the previous ball ID while visible, then chooses the highest-confidence ball. A player becomes a possession candidate after three consecutive frames with the same ball and nearest player, measured from the ball centre to the bottom centre of the player box in units of player height (maximum 0.5). Missing observations and identity changes reset confirmation. This image-space heuristic can confuse nearby players, referees and contested balls. Compare candidate intervals with manually labelled footage before interpreting possession.
 
+### Reading the ball timeline
+
+The CSV includes a `ball_source` column. A `tracked` position has a ball track ID. A `detected` position comes from a detector box that ByteTrack did not assign an ID. Both appear as yellow rings. If both are missing, the pipeline searches nearby pixels for the last observed ball. A distinctive match appears as a blue ring and a `motion` row. The search stops after a failed or ambiguous match, a scene change, or approximately 0.1 seconds (at most five frames). An `unknown` row has empty coordinates. Only tracked observations can confirm possession.
+
 ### Football-specific detector
 
 Select **Use football-specific detector (experimental)** and **Estimate player possession (experimental)** to try the reco YOLO26s model. The first run downloads its 40 MB ONNX file and checks its SHA-256 digest. Later runs reuse the verified file. The preset uses a fixed 1920 × 1920 input and tracks the person and ball classes. The referee class is excluded. The dashboard reports ball and possession coverage as frame counts.
