@@ -32,7 +32,8 @@ def export_highlights(source: Path, events: list[dict], duration: float,
         with ZipFile(archive, "w") as bundle:
             for index, event in enumerate(events, 1):
                 seconds = event["seconds"]
-                start, end = clip_window(seconds, duration, lead, tail)
+                start, end = clip_window(seconds, duration, event.get("lead_seconds", lead),
+                                         event.get("tail_seconds", tail))
                 team = event["team"]
                 score = event["new_score"]
                 name = f"{index:02d}-{team}-{score.replace('–', '-')}.mp4"

@@ -8,7 +8,7 @@ from zipfile import ZipFile
 
 import streamlit as st
 
-from src.events.highlights import export_highlights
+from src.events.highlights import clip_window, export_highlights
 from src.events.scoreboard import scan_scoreboard
 
 
@@ -34,24 +34,42 @@ def manual_review(uploaded, rows, duration, lead, tail, state):
     event = by_label[label]
     st.caption(f"Review reason: {event['review_reason']}. "
                f"Match clock: {event['previous_clock'] or 'unreadable'} → {event['new_clock'] or 'unreadable'}.")
+    trims = state.setdefault("trims", {})
+    before, after = trims.get(label, (lead, tail))
+    left, right = st.columns(2)
+    before = left.number_input("Lead-in for this clip (seconds)", min_value=0.0,
+                               value=float(before), step=0.5, key=f"lead-{key}-{label}")
+    after = right.number_input("Follow-up for this clip (seconds)", min_value=0.1,
+                               value=float(after), step=0.5, key=f"tail-{key}-{label}")
+    trims[label] = before, after
+    start, end = clip_window(event["seconds"], duration, before, after)
+    st.caption(f"Source interval {start:.2f}–{end:.2f} s · duration {end-start:.2f} s")
+    preview_key = (label, before, after)
+    def trimmed(name):
+        window = trims.get(name, (lead, tail))
+        if window == (lead, tail):
+            return by_label[name]
+        return dict(by_label[name], lead_seconds=window[0], tail_seconds=window[1])
+
     if st.button("Preview flagged clip"):
         with st.spinner("Preparing preview..."):
-            archive = export_upload(uploaded, [event], duration, lead, tail)
+            archive = export_upload(uploaded, [trimmed(label)], duration, lead, tail)
             with ZipFile(io.BytesIO(archive)) as bundle:
                 clip = next(name for name in bundle.namelist() if name.endswith(".mp4"))
-                state["preview"] = (label, bundle.read(clip))
-    if state.get("preview", (None,))[0] == label:
+                state["preview"] = (preview_key, bundle.read(clip))
+    if state.get("preview", (None,))[0] == preview_key:
         st.video(state["preview"][1])
 
     selected = st.multiselect("Include these flagged clips in a separate export",
                               list(by_label), key=f"selection-{key}")
     labels = tuple(label for label in by_label if label in selected)
-    if state.get("selection") != labels:
+    selection = tuple((name, trims.get(name, (lead, tail))) for name in labels)
+    if state.get("selection") != selection:
         state.pop("manual_zip", None)
-        state["selection"] = labels
+        state["selection"] = selection
     if st.button("Build selected highlights", disabled=not labels):
         with st.spinner("Exporting selected highlights..."):
-            state["manual_zip"] = export_upload(uploaded, [by_label[label] for label in labels],
+            state["manual_zip"] = export_upload(uploaded, [trimmed(name) for name in labels],
                                                 duration, lead, tail)
     if state.get("manual_zip"):
         st.download_button("Download selected highlights", state["manual_zip"],
@@ -95,7 +113,7 @@ def show_score_scan(uploaded, layout, clock_box, make_clips, lead, tail):
         st.info("No readable scores. Check the scoreboard layout.")
     if report["review"]:
         st.subheader("Score changes requiring review")
-        st.caption(f"Automatic highlights exclude these changes. Replay window: {lead} seconds before "
+        st.caption(f"Automatic highlights exclude these changes. Default window: {lead} seconds before "
                    f"the new score and {tail} seconds after.")
         st.dataframe(report["review"], hide_index=True)
         download_rows(report["review"], "Download clock review", "clock-review.csv")

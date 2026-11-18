@@ -26,6 +26,10 @@ show_score_scan(video, None, None, True, 8, 2)
         assert not app.exception
         assert export.call_args.args[1] == [row]
         assert app.session_state["score_scan"]["manual_zip"] == b"archive"
+        app.number_input[0].set_value(1.0).run()
+        assert "manual_zip" not in app.session_state["score_scan"]
+        app.button[-1].click().run()
+        assert export.call_args.args[1] == [dict(row, lead_seconds=1.0, tail_seconds=2.0)]
         scan.assert_called_once()
         app.multiselect[0].set_value([]).run()
         assert "manual_zip" not in app.session_state["score_scan"]
