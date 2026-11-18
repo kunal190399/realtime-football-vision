@@ -10,6 +10,6 @@ class PoseEstimator:
         self.model = YOLO(weights)
         self.device = device
 
-    def annotate(self, frame: Any) -> Any:
+    def annotate(self, frame: Any, canvas: Any = None) -> Any:
         result = self.model.predict(frame, device=self.device, verbose=False)[0]
-        return result.plot()
+        return result.plot(img=canvas)
