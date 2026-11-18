@@ -2,7 +2,7 @@
 
 A prototype computer-vision pipeline for analysing football video-game broadcast footage. The first milestone provides video ingestion, player tracking, human pose overlays, annotated-video export and inference profiling.
 
-> **Status:** Stage 1 prototype. This is an engineering prototype, not a validated goal/shot detector. Generic COCO weights are not specialised for small footballs, broadcast overlays or game-specific UI elements.
+> **Status:** Experimental player tracking and possession prototype. This is an engineering prototype, not a validated goal/shot detector. Generic COCO weights are not specialised for small footballs, broadcast overlays or game-specific UI elements.
 
 ## Project scope
 
@@ -38,23 +38,30 @@ python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\\Scripts\\activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
-streamlit run app/dashboard.py
+python -m streamlit run app/dashboard.py
 ```
 
 The first run downloads the configured model weights. For GPU inference, install a PyTorch build compatible with your CUDA environment and verify that Ultralytics can access the GPU. Leave the device field blank for automatic selection.
+
+## Review ball tracks and possession candidates
+
+Enable **Estimate player possession (experimental)** before processing a clip. Use weights with a `person` or `player` class and a `sports ball`, `ball` or `football` class. The default COCO model includes `sports ball`. Small or occluded footballs can be missed.
+
+Download the frame timeline for zero-based frame indices, source-video timestamps in seconds, ball centre coordinates in pixels, and track IDs. Empty fields mean unknown. When multiple balls are visible, the pipeline follows the previous ball ID while visible, then chooses the highest-confidence ball. A player becomes a possession candidate after three consecutive frames with the same ball and nearest player, measured from the ball centre to the bottom centre of the player box in units of player height (maximum 0.5). Missing observations and identity changes reset confirmation. This image-space heuristic can confuse nearby players, referees and contested balls. Compare candidate intervals with manually labelled footage before interpreting possession.
 
 ## Current limitations
 
 1. COCO-pretrained YOLO detects people but does not provide a reliable, dedicated football detector for broadcast footage.
 2. Broadcast overlays, camera cuts, miniature players and stylised game graphics can differ substantially from natural-image training data.
-3. Goal, shot and possession events are not yet implemented. These require a sports-specific ball/player detector, temporal tracking and usually scoreboard/goal-region calibration.
+3. Goal and shot events are not yet implemented. These require a sports-specific ball/player detector, temporal tracking and usually scoreboard/goal-region calibration.
 4. Reported FPS is model inference throughput and excludes some I/O and UI overhead. Results depend on hardware, model size, resolution and video codec.
 
 ## Roadmap
 
 - [x] Stage 1 scaffold: video ingestion, tracking, pose overlay and metrics
-- [x] Stage 2 experimental person-only ByteTrack configuration and tracking evaluation protocol\n- [ ] Add sports-specific player/ball dataset and detector training
-- [ ] Add temporal ball tracking and possession estimation
+- [x] Stage 2 experimental person-only ByteTrack configuration and tracking evaluation protocol
+- [ ] Add sports-specific player/ball dataset and detector training
+- [x] Add experimental temporal ball tracking and player possession candidates
 - [ ] Add calibrated shot/goal candidate detection and event evaluation
 - [ ] Add mAP, precision-recall, event F1 and latency benchmark reports
 - [ ] Add demo clips and reproducible experiment configuration
