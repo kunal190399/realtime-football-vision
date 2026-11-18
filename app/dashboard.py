@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 import streamlit as st
 from src.detection.football_weights import football_weights
+from src.events.highlights import export_highlights
 from src.events.scoreboard import scan_scoreboard
 from src.pipeline.realtime_pipeline import RealtimePipeline
 
@@ -18,6 +19,10 @@ mode = st.radio("Analysis", ["Players and ball", "Scoreboard updates"], horizont
 if mode == "Scoreboard updates":
     st.caption("Preset for the France–Australia score graphic. Reads single-digit scores "
                "in the full video and timestamps changes on the video clock.")
+    make_clips = st.checkbox("Export one highlight per score update")
+    if make_clips:
+        lead = st.slider("Seconds before the score update", 1, 30, 8)
+        tail = st.slider("Seconds after the score update", 1, 10, 2)
     if uploaded and st.button("Scan scoreboard", type="primary"):
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -25,6 +30,17 @@ if mode == "Scoreboard updates":
                 path.write_bytes(uploaded.getbuffer())
                 with st.spinner("Reading the scoreboard..."):
                     report = scan_scoreboard(str(path))
+                bundle = None
+                if make_clips and report["events"]:
+                    try:
+                        with st.spinner("Exporting highlight clips..."):
+                            bundle = export_highlights(path, report["events"], report["duration_seconds"],
+                                                       lead, tail)
+                    except (OSError, RuntimeError, ValueError) as exc:
+                        st.warning(f"Highlight export failed: {exc}")
+            if bundle:
+                st.download_button("Download highlights and index", bundle, file_name="highlights.zip",
+                                   mime="application/zip", on_click="ignore")
             st.write(f"{len(report['events'])} score updates. "
                      f"Score readable in {report['readable']} of {report['samples']} samples.")
             if report["events"]:

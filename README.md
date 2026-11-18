@@ -63,6 +63,8 @@ The model was trained on amateur football filmed with fixed cameras. Broadcast c
 
 Choose **Scoreboard updates**, upload a clip and click **Scan scoreboard**. This mode scans the full video independently of the player models and exports CSV rows with the team, old and new scores, first stable sample time and confirmation time. It requires Tesseract OCR with English language data on the system PATH (Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-eng`; macOS with Homebrew: `brew install tesseract`).
 
+To create match highlights, select **Export one highlight per score update** before scanning. The default window starts eight seconds before the update and ends two seconds after it. Adjust either window to suit the broadcast delay. The ZIP contains one H.264 MP4 per event, with source audio when available, and a CSV mapping each clip to its source timestamps. Exports stop at the beginning and end of the input. Edited footage can contain a cut inside a highlight. Highlight export requires FFmpeg with libx264 on PATH.
+
 The preset expects the single-digit FRA–AUS score graphic in the same position and team order as the supplied 16:9 footage. Use a separate calibration for other graphics, team orders, cropped video or letterboxing. Team names are preset labels. The reader samples approximately four times per second and accepts a one-goal increment after three consecutive matching score pairs. It ignores downward changes, rebases on larger forward jumps, and establishes a fresh baseline after a prolonged unreadable interval. A timestamp is the first sample of the confirmed display change. The ball can cross the goal line earlier.
 
 ## Current limitations

@@ -129,6 +129,7 @@ def scan_scoreboard(path: str) -> dict:
             frame += 1
         if frame == 0:
             raise ValueError("No decodable frames.")
-        return dict(events=events, samples=samples, readable=readable, frames=frame)
+        return dict(events=events, samples=samples, readable=readable, frames=frame,
+                    duration_seconds=frame / fps)
     finally:
         cap.release()
