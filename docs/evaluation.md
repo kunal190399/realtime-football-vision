@@ -43,3 +43,7 @@ Across the opening clip, all 30 previous tracked positions were retained. Fourte
 ## Scoreboard display changes
 
 The fixed FRA–AUS preset was checked through the Streamlit upload workflow using all 3,334 frames of the supplied 50 fps highlights. OCR returned scores on 278 of 278 samples. The five confirmed changes were 0–1 at 9.84 s, 1–1 at 24.72 s, 2–1 at 36.96 s, 3–1 at 48.00 s and 4–1 at 63.36 s. Before-and-after score crops were checked for each transition. Times identify the first sample of a stable reading on the video timeline. Camera edits and the broadcast update delay preclude using these values as goal-line crossing times.
+
+### Custom layout check
+
+Both the built-in and manually configured regions reproduced all five timestamps on the France–Australia footage. The custom reader returned a score for all 278 samples. A separate synthetic 640 × 360 clip moved the digits to the bottom right, inverted their colours and used RED and BLU labels. The dashboard preview read 0–0. Scanning reported BLU at 2.00 s and RED at 4.00 s and produced both CSV and highlight downloads. An independent broadcast with a different scoreboard design still needs evaluation.

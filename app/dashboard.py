@@ -4,6 +4,7 @@ import io
 import tempfile
 from pathlib import Path
 import streamlit as st
+from app.score_calibration import select_layout
 from src.detection.football_weights import football_weights
 from src.events.highlights import export_highlights
 from src.events.scoreboard import scan_scoreboard
@@ -17,8 +18,14 @@ st.caption("Possession estimates use the distance between a detected ball and ne
 uploaded = st.file_uploader("Upload a short gameplay/broadcast clip", type=["mp4", "mov", "avi"])
 mode = st.radio("Analysis", ["Players and ball", "Scoreboard updates"], horizontal=True)
 if mode == "Scoreboard updates":
-    st.caption("Preset for the France–Australia score graphic. Reads single-digit scores "
-               "in the full video and timestamps changes on the video clock.")
+    preset = st.selectbox("Scoreboard layout", ["France–Australia", "Custom layout"])
+    layout = None
+    if preset == "Custom layout":
+        layout = select_layout(uploaded)
+        if layout is None:
+            st.stop()
+    else:
+        st.caption("Reads the France–Australia single-digit score graphic.")
     make_clips = st.checkbox("Export one highlight per score update")
     if make_clips:
         lead = st.slider("Seconds before the score update", 1, 30, 8)
@@ -29,7 +36,7 @@ if mode == "Scoreboard updates":
                 path = Path(temp_dir) / ("input" + Path(uploaded.name).suffix)
                 path.write_bytes(uploaded.getbuffer())
                 with st.spinner("Reading the scoreboard..."):
-                    report = scan_scoreboard(str(path))
+                    report = scan_scoreboard(str(path), layout)
                 bundle = None
                 if make_clips and report["events"]:
                     try:
