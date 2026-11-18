@@ -51,7 +51,7 @@ Download the frame timeline for zero-based frame indices, source-video timestamp
 
 ### Reading the ball timeline
 
-The CSV includes a `ball_source` column. A `tracked` position has a ball track ID. A `detected` position comes from a detector box that ByteTrack did not assign an ID. Both appear as yellow rings. If both are missing, the pipeline searches nearby pixels for the last observed ball. A distinctive match appears as a blue ring and a `motion` row. The search stops after a failed or ambiguous match, a scene change, or approximately 0.1 seconds (at most five frames). An `unknown` row has empty coordinates. Only tracked observations can confirm possession.
+The CSV includes a `ball_source` column. A `tracked` position has a ball track ID. A `detected` position comes from a detector box that ByteTrack did not assign an ID. Untracked seeds require a majority of turf-coloured pixels in a 49 × 49 neighbourhood to reduce matches on advertising boards. Airborne balls, close-ups and pitches with different colours can be missed. Both appear as yellow rings. If both are missing, the pipeline searches nearby pixels for the last observed ball. A distinctive match appears as a blue ring and a `motion` row. The search stops after a failed or ambiguous match, a scene change, or approximately 0.1 seconds (at most five frames). An `unknown` row has empty coordinates. Only tracked observations can confirm possession.
 
 ### Football-specific detector
 

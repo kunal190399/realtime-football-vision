@@ -31,3 +31,11 @@ Count a ball candidate when the exported timeline has a ball centre, and a posse
 | reco YOLO26s ONNX | 30 / 600 | 0 / 600 |
 
 Visual review of all 30 exported positions showed the ball at the reported centre. Two frames were at 2.92–2.94 s, seven were within 5.24–5.38 s, and 21 were within 7.56–8.00 s. Coverage is 5% of all frames. Ball visibility in the remaining frames has not been exhaustively labelled, so recall is unknown. This single-clip check provides no validation of player possession.
+
+### Recovering short gaps during the attack
+
+Run the same clip and settings. Compare the new `ball_source` column against the previous timeline using the zero-based frame index. In frames 144–152 (2.88–3.04 s), the direct detector supplied two untracked observations, ByteTrack supplied two tracked positions, and local image matching continued the ball for five frames. At frame 150 the estimate was (675, 221) in the original 1280 × 720 image. Review of the source frame places that point on the moving ball.
+
+A separate one-second excerpt starting 56.00 seconds into the same source video exercised a close-up with a fresh tracker. Of 50 frames, 11 had tracked positions, one had a motion estimate and 38 were unknown. The ball was visible at all 12 reported positions. Without the pitch-colour check, this close-up yielded six additional correct positions. The check trades those positions for fewer advertising-board matches in the opening clip. Neither excerpt has exhaustive ground truth for visibility or possession.
+
+Across the opening clip, all 30 previous tracked positions were retained. Fourteen additional frames had untracked detections, 15 had motion estimates, and 541 remained unknown. All 29 new positions were visually reviewed on the original footage. No player possession was confirmed. The pitch-colour check was selected using this clip, so it needs evaluation on other matches.

@@ -10,6 +10,29 @@ class BallMotion:
         self.centre = None
         self.previous_view = None
 
+    def annotate_observation(self, frame, observation: dict) -> None:
+        x, y = observation["ball_x"], observation["ball_y"]
+        if observation["ball_track_id"] is not None:
+            source = "tracked"
+        elif x is not None and self._near_pitch(frame, x, y):
+            source = "detected"
+        else:
+            source = "unknown"
+            x = y = None
+        estimate = self.update(frame, x, y)
+        if estimate is not None:
+            x, y = estimate
+            source = "motion"
+        observation.update(ball_x=x, ball_y=y, ball_source=source)
+
+    @staticmethod
+    def _near_pitch(frame, x, y) -> bool:
+        # Only seed an unconfirmed detection when most nearby pixels resemble turf.
+        patch = cv2.getRectSubPix(frame, (49, 49), (float(x), float(y)))
+        hsv = cv2.cvtColor(patch, cv2.COLOR_BGR2HSV)
+        grass = cv2.inRange(hsv, (25, 36, 0), (90, 255, 255))
+        return cv2.countNonZero(grass) > grass.size / 2
+
     def update(self, frame, x: float | None, y: float | None) -> tuple[int, int] | None:
         # Keep the original template throughout a gap to limit accumulated drift.
         view = frame[::32, ::32]

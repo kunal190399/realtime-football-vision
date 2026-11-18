@@ -44,3 +44,20 @@ def test_untracked_detection_survives_empty_tracker_output():
     tracker = PlayerTracker.__new__(PlayerTracker)
     tracker.raw_ball = Track("ball", None, (10, 12, 18, 20), 0.8)
     assert tracker.observations(SimpleNamespace(boxes=None)) == [tracker.raw_ball]
+
+
+def test_untracked_board_candidate_cannot_seed_motion():
+    motion = BallMotion(50)
+    board = np.full((80, 120, 3), 45, np.uint8)
+    board[36:45, 36:45] = 235
+    observation = dict(ball_track_id=None, ball_x=40, ball_y=40)
+    motion.annotate_observation(board, observation)
+    assert observation == dict(ball_track_id=None, ball_x=None, ball_y=None, ball_source="unknown")
+    assert motion.update(board, None, None) is None
+
+
+def test_untracked_pitch_candidate_retains_coordinates_without_an_id():
+    motion = BallMotion(50)
+    observation = dict(ball_track_id=None, ball_x=40, ball_y=40)
+    motion.annotate_observation(pitch(40), observation)
+    assert observation == dict(ball_track_id=None, ball_x=40, ball_y=40, ball_source="detected")

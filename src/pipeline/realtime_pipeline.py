@@ -43,17 +43,8 @@ class RealtimePipeline:
                 annotated = self.pose.annotate(frame, canvas=tracked.plot())
                 if possession:
                     observation = estimator.update(self.tracker.observations(tracked))
-                    xy = motion.update(frame, observation["ball_x"], observation["ball_y"])
-                    if xy is not None:
-                        observation["ball_x"], observation["ball_y"] = xy
-                        source = "motion"
-                    elif observation["ball_track_id"] is not None:
-                        source = "tracked"
-                    elif observation["ball_x"] is not None:
-                        source = "detected"
-                    else:
-                        source = "unknown"
-                    observation["ball_source"] = source
+                    motion.annotate_observation(frame, observation)
+                    source = observation["ball_source"]
                     timeline.append(dict(frame=count, seconds=count / fps_in, **observation))
                     if observation["ball_x"] is not None:
                         centre = (round(observation["ball_x"]), round(observation["ball_y"]))
