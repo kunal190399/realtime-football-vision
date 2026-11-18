@@ -8,7 +8,6 @@ from app.score_calibration import select_layout
 from src.detection.football_weights import football_weights
 from src.events.highlights import export_highlights
 from src.events.scoreboard import scan_scoreboard
-from src.pipeline.realtime_pipeline import RealtimePipeline
 
 st.set_page_config(page_title="Football Vision Lab", page_icon="⚽", layout="wide")
 st.title("⚽ Real-Time Football Vision Lab")
@@ -26,6 +25,16 @@ if mode == "Scoreboard updates":
             st.stop()
     else:
         st.caption("Reads the France–Australia single-digit score graphic.")
+    clock_box = None
+    if st.checkbox("Check match-clock continuity before exporting highlights", value=True):
+        raw_box = st.text_input("Clock box (x, y, width, height)", "64,40,98,25") if layout else "64,40,98,25"
+        try:
+            clock_box = tuple(int(value.strip()) for value in raw_box.split(","))
+            if len(clock_box) != 4:
+                raise ValueError
+        except ValueError:
+            st.warning("Enter four comma-separated integers for the match clock.")
+            st.stop()
     make_clips = st.checkbox("Export one highlight per score update")
     if make_clips:
         lead = st.slider("Seconds before the score update", 1, 30, 8)
@@ -36,7 +45,7 @@ if mode == "Scoreboard updates":
                 path = Path(temp_dir) / ("input" + Path(uploaded.name).suffix)
                 path.write_bytes(uploaded.getbuffer())
                 with st.spinner("Reading the scoreboard..."):
-                    report = scan_scoreboard(str(path), layout)
+                    report = scan_scoreboard(str(path), layout, clock_box)
                 bundle = None
                 if make_clips and report["events"]:
                     try:
@@ -50,6 +59,16 @@ if mode == "Scoreboard updates":
                                    mime="application/zip", on_click="ignore")
             st.write(f"{len(report['events'])} score updates. "
                      f"Score readable in {report['readable']} of {report['samples']} samples.")
+            if report["review"]:
+                st.subheader("Score changes requiring review")
+                st.caption("These changes are excluded from automatic highlights.")
+                st.dataframe(report["review"], hide_index=True)
+                review_csv = io.StringIO()
+                review_writer = csv.DictWriter(review_csv, fieldnames=report["review"][0].keys())
+                review_writer.writeheader()
+                review_writer.writerows(report["review"])
+                st.download_button("Download clock review", review_csv.getvalue(),
+                                   file_name="clock-review.csv", mime="text/csv", on_click="ignore")
             if report["events"]:
                 st.dataframe(report["events"], hide_index=True)
                 buffer = io.StringIO()
@@ -88,6 +107,8 @@ if uploaded:
                 with st.spinner("Loading models and processing video..."):
                     if specialist:
                         detector_weights = str(football_weights(Path.home() / ".cache" / "football-vision"))
+                    from src.pipeline.realtime_pipeline import RealtimePipeline
+
                     pipeline = RealtimePipeline(detector_weights, pose_weights,
                                                 device=device or None, confidence=confidence)
                     metrics = pipeline.process_video(str(input_path), str(output_path),

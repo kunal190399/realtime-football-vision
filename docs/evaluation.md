@@ -47,3 +47,7 @@ The fixed FRA–AUS preset was checked through the Streamlit upload workflow usi
 ### Custom layout check
 
 Both the built-in and manually configured regions reproduced all five timestamps on the France–Australia footage. The custom reader returned a score for all 278 samples. A separate synthetic 640 × 360 clip moved the digits to the bottom right, inverted their colours and used RED and BLU labels. The dashboard preview read 0–0. Scanning reported BLU at 2.00 s and RED at 4.00 s and produced both CSV and highlight downloads. An independent broadcast with a different scoreboard design still needs evaluation.
+
+### Match-clock continuity on edited footage
+
+A second 1280 × 720, 50 fps highlights edit used the same broadcast graphic with Argentina on the left and France on the right. The reader compared three-sample score runs across the full 62.06 seconds. Six increments were visible from 0–0 to 3–3. At 20.40 s the new score was 2–1. The previous 2–0 sample at 18.48 s displayed 79:25 and the new sample displayed 80:54. A two-second scoreboard-gap rule alone accepted this change. The clock check sends it to review. The other five changes span scoreboard gaps exceeding two seconds. None qualify for automatic highlights. In the France–Australia clip all five previously recorded updates pass the check. Neither clip validates the timing of the ball crossing the goal line.

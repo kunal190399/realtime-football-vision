@@ -10,6 +10,8 @@ from typing import Callable
 import cv2
 import numpy as np
 
+from src.events.match_clock import read_clock, review_changes
+
 
 @dataclass(frozen=True)
 class ScoreLayout:
@@ -181,12 +183,18 @@ class ScoreReader:
         return (left, right) if left is not None and right is not None else None
 
 
-def scan_scoreboard(path: str, layout: ScoreLayout | None = None) -> dict:
+def scan_scoreboard(path: str, layout: ScoreLayout | None = None,
+                    clock_box: tuple[int, int, int, int] | None = None) -> dict:
     if not shutil.which("tesseract"):
         raise RuntimeError("Install Tesseract OCR and make its tesseract command available on PATH.")
+    if clock_box is not None:
+        x, y, w, h = clock_box
+        if min(x, y) < 0 or min(w, h) < 3 or x+w > 1280 or y+h > 720:
+            raise ValueError("Clock box must fit inside the 1280 × 720 preview.")
     cap = cv2.VideoCapture(path)
     reader, monitor = ScoreReader(layout=layout), ScoreMonitor(layout.teams if layout else ("FRA", "AUS"))
     events = []
+    observations = []
     frame = samples = readable = 0
     try:
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -197,6 +205,8 @@ def scan_scoreboard(path: str, layout: ScoreLayout | None = None) -> dict:
             if frame % stride == 0:
                 ok, pixels = cap.retrieve()
                 score = reader.read(pixels) if ok else None
+                if clock_box is not None:
+                    observations.append((frame, score))
                 samples += 1
                 readable += int(score is not None)
                 event = monitor.observe(score, frame, fps)
@@ -205,7 +215,12 @@ def scan_scoreboard(path: str, layout: ScoreLayout | None = None) -> dict:
             frame += 1
         if frame == 0:
             raise ValueError("No decodable frames.")
-        return dict(events=events, samples=samples, readable=readable, frames=frame,
+        review = []
+        if clock_box is not None:
+            def clock_at(index):
+                return read_clock(cap, index, clock_box, layout.light_digits if layout else True)
+            events, review = review_changes(observations, fps, monitor.teams, events, clock_at)
+        return dict(events=events, review=review, samples=samples, readable=readable, frames=frame,
                     duration_seconds=frame / fps)
     finally:
         cap.release()
