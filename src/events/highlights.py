@@ -22,8 +22,10 @@ def export_highlights(source: Path, events: list[dict], duration: float,
         raise RuntimeError("Install FFmpeg and make ffmpeg available on PATH.")
     manifest = io.StringIO()
     writer = csv.writer(manifest)
+    reviewed = any(event.get("review_reason") for event in events)
+    audit_fields = ["selection", "review_reason", "previous_clock", "new_clock", "previous_sample_seconds"]
     writer.writerow(["file", "team", "score", "source_start_s", "source_end_s",
-                     "score_update_s", "update_in_clip_s"])
+                     "score_update_s", "update_in_clip_s"] + (audit_fields if reviewed else []))
     with TemporaryDirectory() as directory:
         folder = Path(directory)
         archive = folder / "highlights.zip"
@@ -47,7 +49,11 @@ def export_highlights(source: Path, events: list[dict], duration: float,
                     raise RuntimeError(f"Could not encode highlight {index}: "
                                        + result.stderr.decode(errors="replace")[-600:])
                 bundle.write(clip, name)
+                audit = []
+                if reviewed:
+                    audit = ["manual" if event.get("review_reason") else "automatic",
+                             *(event.get(field, "") for field in audit_fields[1:])]
                 writer.writerow([name, team, score, round(start, 4), round(end, 4),
-                                 round(seconds, 4), round(seconds-start, 4)])
+                                 round(seconds, 4), round(seconds-start, 4)] + audit)
             bundle.writestr("highlights.csv", manifest.getvalue())
         return archive.read_bytes()
