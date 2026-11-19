@@ -52,12 +52,17 @@ def main():
     model = YOLO(args.weights)
     model.train(**common, epochs=args.epochs, name="train", seed=42, mosaic=0,
                 amp=False, optimizer="AdamW", lr0=.001, freeze=10)
-    candidate = YOLO(str(model.trainer.best))
-    metrics = candidate.val(**common, split="test", name="held-out")
+    evaluate_checkpoint(model.trainer.best, args.output, common)
+
+
+def evaluate_checkpoint(checkpoint, output, options):
+    from ultralytics import YOLO
+
+    metrics = YOLO(str(checkpoint)).val(**options, split="test", name="held-out")
     report = dict(weights="train/weights/best.pt", split_counts={
-        k: len((args.output / f"{k}.txt").read_text().splitlines()) for k in ("train", "val", "test")},
+        k: len((output / f"{k}.txt").read_text().splitlines()) for k in ("train", "val", "test")},
         overall=metrics.results_dict, per_class=metrics.summary())
-    (args.output / "test-metrics.json").write_text(json.dumps(report, indent=2))
+    (output / "test-metrics.json").write_text(json.dumps(report, indent=2, default=lambda scalar: scalar.item()))
 
 
 if __name__ == "__main__":
