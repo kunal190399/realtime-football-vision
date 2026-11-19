@@ -16,7 +16,13 @@ def intersection_over_union(first, second):
     return intersection / union if union > 0 else 0
 
 
-def evaluate(model, paths, confidence, imgsz):
+def detector_boxes(model, frame, confidence, imgsz):
+    result = model.predict(frame, device="cpu", imgsz=imgsz, conf=confidence, verbose=False)[0]
+    return [box.xyxy[0].tolist() for box in sorted(result.boxes, key=lambda b: -b.conf.item())
+            if result.names[int(box.cls.item())].lower() in {"ball", "football", "sports ball"}]
+
+
+def evaluate(model, paths, confidence, imgsz, local=False):
     matched = extra = missed = 0
     for path in paths:
         frame = cv2.imread(str(path))
@@ -29,11 +35,13 @@ def evaluate(model, paths, confidence, imgsz):
             cls, x, y, w, h = map(float, row.split())
             if cls == 0:  # Ball in the pinned four-class football dataset.
                 labels.append(((x-w/2)*width, (y-h/2)*height, (x+w/2)*width, (y+h/2)*height))
-        result = model.predict(frame, device="cpu", imgsz=imgsz, conf=confidence, verbose=False)[0]
-        for box in sorted(result.boxes, key=lambda b: -b.conf.item()):
-            if result.names[int(box.cls.item())].lower() not in {"ball", "football", "sports ball"}:
-                continue
-            scores = [intersection_over_union(box.xyxy[0].tolist(), label) for label in labels]
+        if local:
+            candidate = model.detect(frame, confidence)
+            boxes = [candidate.xyxy] if candidate is not None else []
+        else:
+            boxes = detector_boxes(model, frame, confidence, imgsz)
+        for box in boxes:
+            scores = [intersection_over_union(box, label) for label in labels]
             if scores and max(scores) >= .5:
                 matched += 1
                 labels.pop(scores.index(max(scores)))
@@ -45,14 +53,23 @@ def evaluate(model, paths, confidence, imgsz):
 
 
 if __name__ == "__main__":
-    from ultralytics import YOLO
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image_list", type=Path)
-    parser.add_argument("--weights", type=Path, help="Defaults to the pinned dashboard preset.")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--local-ball", action="store_true", help="Evaluate the bundled appearance model.")
+    selection.add_argument("--weights", type=Path, help="Defaults to the pinned dashboard preset.")
     parser.add_argument("--imgsz", type=int, default=1920)
-    parser.add_argument("--confidence", type=float, default=.25)
+    parser.add_argument("--confidence", type=float)
     args = parser.parse_args()
-    model = YOLO(str(args.weights or football_weights(Path.home()/".cache"/"football-vision")), task="detect")
+    if args.local_ball:
+        from src.detection.local_ball import LocalBallDetector
+        model = LocalBallDetector()
+        default_confidence = .90
+    else:
+        from ultralytics import YOLO
+        model = YOLO(str(args.weights or football_weights(Path.home()/".cache"/"football-vision")), task="detect")
+        default_confidence = .25
+    confidence = args.confidence if args.confidence is not None else default_confidence
     paths = [Path(s) for s in args.image_list.read_text().splitlines()]
-    print(json.dumps(evaluate(model, paths, args.confidence, args.imgsz), indent=2))
+    print(json.dumps(evaluate(model, paths, confidence, args.imgsz, args.local_ball), indent=2))

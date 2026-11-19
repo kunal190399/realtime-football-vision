@@ -69,3 +69,33 @@ As a comparison, the existing reco YOLO26s dashboard preset returned one correct
 ```sh
 python -m src.evaluation.ball_boxes outputs/football/test.txt
 ```
+
+## Small-ball appearance model
+
+Enable **Recover small balls with the appearance model** in the dashboard after choosing possession or fixed-camera analysis. When the primary detector returns no ball box, the fallback searches for small bright features at a 1080-pixel reference height and scores their neighbourhoods. It returns at most one box per frame. The bundled numeric model runs on CPU with NumPy and OpenCV.
+
+The frame timeline marks an accepted fallback box as `appearance`. It must pass the untracked detection's near-pitch check and has no track ID. It may seed a short motion continuation or contribute a directly observed centre to fixed-camera geometry. Possession confirmation still requires a tracked ball. White socks and boots are a source of false positives, particularly during broadcast close-ups.
+
+The model used only the 298-image training list above. The training script fits boosted decision trees, mines high-scoring negative examples from those same images, and estimates box dimensions and centre offsets from labelled positives. The 0.90 score threshold was chosen on the 35-image validation split. These results use one-to-one matching at IoU 0.50 on the same splits as the earlier benchmarks.
+
+| Split | Labelled balls | Correct boxes | Extra boxes | Missed balls | Precision | Recall |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Validation | 27 | 6 | 1 | 21 | 85.7% | 22.2% |
+| Held-out test | 35 | 7 | 1 | 28 | 87.5% | 20.0% |
+
+On the first 200 France–Australia frames, the five-epoch detector with the fallback produced 7 appearance observations, 15 motion estimates and 178 unknown positions. The exported clip decoded all 200 frames. At 3.00 s the observed centre was (675.7, 221.6), close to the previously reviewed ball position at (675, 221). CPU throughput on this run was 7.54 frames/s. A separate once-per-second check of both supplied clips covered 130 frames. The appearance model returned nine boxes; visual inspection showed both ball and sock detections. The unsampled frames and missed balls were not labelled. This sample measures neither full-video recall nor shot accuracy.
+
+To evaluate the shipped model after preparing the dataset splits, run:
+
+```sh
+python -m src.evaluation.ball_boxes outputs/football/test.txt --local-ball
+```
+
+To reproduce training, use the pinned football dataset and source groups described above. The training-only dependency is scikit-learn 1.8.0. Run in a Python 3.12 environment and save the output to a new file:
+
+```sh
+python -m pip install scikit-learn==1.8.0
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 python -m src.training.local_ball outputs/football/train.txt outputs/football/local-ball.npz
+```
+
+The numeric model in `configs/local-ball.npz` was trained on the CC BY 4.0 football-players-detection data attributed above. The earlier accuracy table applies to the five-epoch YOLO checkpoint alone.

@@ -35,7 +35,7 @@ class GoalMonitor:
         self.announced = False
 
     def observe(self, seconds, point, source, identity=None):
-        if source not in {"tracked", "detected"} or point is None or not all(map(isfinite, point)):
+        if source not in {"tracked", "detected", "appearance"} or point is None or not all(map(isfinite, point)):
             self.reset()
             return []
         along, distance = self.goal.project(point)

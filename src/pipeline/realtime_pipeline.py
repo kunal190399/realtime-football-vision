@@ -4,6 +4,7 @@ from dataclasses import asdict
 import time
 from pathlib import Path
 import cv2
+from src.detection.local_ball import LocalBallDetector
 from src.events.goal_mouth import GoalMonitor, GoalMouth
 from src.evaluation.runtime import RuntimeProfile
 from src.tracking.ball_motion import BallMotion
@@ -23,8 +24,9 @@ class RealtimePipeline:
 
     def process_video(self, input_path: str, output_path: str,
                       max_frames: int | None = None, possession: bool = False,
-                      goal: GoalMouth | None = None) -> dict:
+                      goal: GoalMouth | None = None, local_ball: bool = False) -> dict:
         runtime = RuntimeProfile()
+        fallback = LocalBallDetector() if local_ball and (possession or goal is not None) else None
         cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
             raise ValueError(f"Could not open video: {input_path}")
@@ -57,8 +59,16 @@ class RealtimePipeline:
                 runtime.record("Pose and model overlays", stage)
                 if possession or monitor:
                     stage = time.perf_counter()
-                    observation = estimator.update(self.tracker.observations(tracked))
+                    tracks = self.tracker.observations(tracked)
+                    candidate = None
+                    if fallback and not any(track.kind == "ball" for track in tracks):
+                        candidate = fallback.detect(frame)
+                        if candidate is not None:
+                            tracks.append(candidate)
+                    observation = estimator.update(tracks)
                     motion.annotate_observation(frame, observation)
+                    if candidate is not None and observation["ball_source"] == "detected":
+                        observation["ball_source"] = "appearance"
                     source = observation["ball_source"]
                     if monitor:
                         if motion.cut:
@@ -96,7 +106,7 @@ class RealtimePipeline:
             raise ValueError("No video frames could be processed.")
         return {
             "runtime": runtime.report(count, fps_in, width, height,
-                                      dict(self.settings, possession=possession, goal=asdict(goal) if goal else None, max_frames=max_frames)),
+                                      dict(self.settings, possession=possession, local_ball=fallback is not None, goal=asdict(goal) if goal else None, max_frames=max_frames)),
             "goal_events": events,
             "timeline": timeline,
             "frames_processed": count,

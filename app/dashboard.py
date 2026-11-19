@@ -68,6 +68,10 @@ with st.sidebar:
         except ValueError as exc:
             st.warning(str(exc))
             st.stop()
+    local_ball = False
+    if possession or goal:
+        local_ball = st.checkbox("Recover small balls with the appearance model", value=False,
+                                 help="Checks frames with no detector ball box. White socks can resemble a ball.")
     max_frames = st.number_input("Maximum frames (0 = all)", min_value=0, value=600, step=100)
 
 if uploaded:
@@ -86,7 +90,7 @@ if uploaded:
                     pipeline = RealtimePipeline(detector_weights, pose_weights,
                                                 device=device or None, confidence=confidence)
                     metrics = pipeline.process_video(str(input_path), str(output_path),
-                                                      max_frames=max_frames or None, possession=possession, goal=goal)
+                                                      max_frames=max_frames or None, possession=possession, goal=goal, local_ball=local_ball)
                     video_bytes = output_path.read_bytes()
                 st.success("Processing complete")
                 show_runtime(metrics["runtime"])
@@ -103,11 +107,14 @@ if uploaded:
                 if possession:
                     rows = metrics["timeline"]
                     assigned = sum(row["possession_track_id"] is not None for row in rows)
-                    observed = sum(row["ball_source"] in {"tracked", "detected"} for row in rows)
+                    observed = sum(row["ball_source"] in {"tracked", "detected", "appearance"} for row in rows)
                     estimated = sum(row["ball_source"] == "motion" for row in rows)
                     st.write(f"Ball observed in {observed} of {len(rows)} frames. "
                              f"Motion estimates in {estimated} additional frames.")
                     st.write(f"Possession candidate assigned in {assigned} of {len(rows)} frames.")
+                    if local_ball:
+                        recovered = sum(row["ball_source"] == "appearance" for row in rows)
+                        st.write(f"Appearance model supplied {recovered} direct observations.")
                     st.caption("Yellow ring: direct observation. Blue ring: motion estimate.")
                     csv_buffer = io.StringIO()
                     writer = csv.DictWriter(csv_buffer, fieldnames=rows[0].keys())
