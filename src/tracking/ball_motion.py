@@ -40,6 +40,7 @@ class BallMotion:
                (self.previous_view.shape != view.shape or
                 cv2.absdiff(view, self.previous_view).mean() > 28))
         self.previous_view = view.copy()
+        self.cut = cut
         if cut:
             self.template = None
         if x is not None:

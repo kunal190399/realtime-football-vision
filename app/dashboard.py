@@ -1,4 +1,5 @@
 from __future__ import annotations
+from src.events.goal_mouth import GoalMouth
 import csv
 import io
 import tempfile
@@ -7,7 +8,7 @@ import streamlit as st
 from app.runtime_report import show_runtime
 from app.score_calibration import select_layout
 from src.detection.football_weights import football_weights
-from app.score_review import show_score_scan
+from app.score_review import download_rows, show_score_scan
 
 st.set_page_config(page_title="Football Vision Lab", page_icon="⚽", layout="wide")
 st.title("⚽ Real-Time Football Vision Lab")
@@ -57,6 +58,16 @@ with st.sidebar:
     confidence = st.slider("Confidence threshold", 0.05, 0.95, 0.25, 0.05)
     device = st.text_input("Device (blank = auto)", "")
     possession = st.checkbox("Estimate player possession (experimental)")
+    goal = None
+    if st.checkbox("Check shot and crossing candidates (fixed camera)"):
+        st.caption("Enter the base of each post and a point on the field in 1280 × 720 reference coordinates. Use one stationary view throughout.")
+        try:
+            points = [tuple(map(int, st.text_input(label, initial).split(","))) for label, initial in
+                      (("First post", "1080,280"), ("Second post", "1080,440"), ("Field point", "640,360"))]
+            goal = GoalMouth(*points)
+        except ValueError as exc:
+            st.warning(str(exc))
+            st.stop()
     max_frames = st.number_input("Maximum frames (0 = all)", min_value=0, value=600, step=100)
 
 if uploaded:
@@ -75,7 +86,7 @@ if uploaded:
                     pipeline = RealtimePipeline(detector_weights, pose_weights,
                                                 device=device or None, confidence=confidence)
                     metrics = pipeline.process_video(str(input_path), str(output_path),
-                                                      max_frames=max_frames or None, possession=possession)
+                                                      max_frames=max_frames or None, possession=possession, goal=goal)
                     video_bytes = output_path.read_bytes()
                 st.success("Processing complete")
                 show_runtime(metrics["runtime"])
@@ -83,6 +94,12 @@ if uploaded:
                 a.metric("Frames processed", metrics["frames_processed"])
                 b.metric("Average inference", f"{metrics['average_inference_ms']:.1f} ms/frame")
                 c.metric("Inference throughput", f"{metrics['average_inference_fps']:.1f} FPS")
+                if goal:
+                    events = metrics["goal_events"]
+                    st.write(f"{len(events)} visual event candidates. Review the projected ball path in the annotated video.")
+                    if events:
+                        st.dataframe(events, hide_index=True)
+                        download_rows(events, "Download visual candidates", "goal-candidates.csv")
                 if possession:
                     rows = metrics["timeline"]
                     assigned = sum(row["possession_track_id"] is not None for row in rows)

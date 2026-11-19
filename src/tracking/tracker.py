@@ -26,7 +26,7 @@ class PlayerTracker:
         self.device = device
         self.kinds = {}
         for class_id, name in self.model.names.items():
-            if name.lower() in {"player", "person"}:
+            if name.lower() in {"player", "person", "goalkeeper"}:
                 self.kinds[class_id] = "player"
             elif name.lower() in {"football", "ball", "sports ball"}:
                 self.kinds[class_id] = "ball"
