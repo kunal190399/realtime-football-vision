@@ -50,11 +50,19 @@ Download the frame timeline for zero-based frame indices, source-video timestamp
 
 The CSV includes a `ball_source` column. A `tracked` position has a ball track ID. A `detected` position comes from a detector box that ByteTrack did not assign an ID. Untracked seeds require a majority of turf-coloured pixels in a 49 × 49 neighbourhood to reduce matches on advertising boards. Airborne balls, close-ups and pitches with different colours can be missed. Both appear as yellow rings. If both are missing, the pipeline searches nearby pixels for the last observed ball. A distinctive match appears as a blue ring and a `motion` row. The search stops after a failed or ambiguous match, a scene change, or approximately 0.1 seconds (at most five frames). An `unknown` row has empty coordinates. Only tracked observations can confirm possession.
 
+### Recover small balls
+
+With possession or fixed-camera analysis enabled, **Recover small balls with the appearance model** adds a CPU fallback when the primary detector misses the ball. Its observations are labelled `appearance` in the timeline. On 39 held-out images it found 7 of 35 labelled balls with one extra box. See the [model evaluation and reproduction steps](docs/football-experiment.md#small-ball-appearance-model).
+
 ### Football-specific detector
 
 Select **Use football-specific detector (experimental)** and **Estimate player possession (experimental)** to try the reco YOLO26s model. The first run downloads its 40 MB ONNX file and checks its SHA-256 digest. Later runs reuse the verified file. The preset uses a fixed 1920 × 1920 input and tracks the person and ball classes. The referee class is excluded. The dashboard reports ball and possession coverage as frame counts.
 
 The model was trained on amateur football filmed with fixed cameras. Broadcast camera movement, close-ups and cuts can affect both the detector and the tracker. Model author, training conditions and AGPL-3.0 model licence are documented in the [pinned model card](https://huggingface.co/Dura-S/reco-yolo26s-football/blob/d20231484951d4ebf3f9f2a7437aa922a4c1b395/README.md).
+
+## Review shots near a stationary goal
+
+With **Check shot and crossing candidates (fixed camera)** enabled, enter the post positions and a point on the pitch, then select **Use motion near the goal for event timing**. The dashboard shows candidate timestamps and exports them as CSV. This mode recovered one filmed penalty during development and missed two other penalties. See the [calibrations and results](docs/football-experiment.md#stationary-camera-motion-near-the-goal).
 
 ## Scoreboard updates
 

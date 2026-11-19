@@ -15,7 +15,7 @@ st.title("⚽ Real-Time Football Vision Lab")
 st.caption("Prototype: player tracking, pose estimation and inference profiling")
 st.caption("Possession estimates use the distance between a detected ball and nearby players. Review the video to check assignments.")
 
-uploaded = st.file_uploader("Upload a short gameplay/broadcast clip", type=["mp4", "mov", "avi"])
+uploaded = st.file_uploader("Upload a short gameplay/broadcast clip", type=["mp4", "mov", "avi", "webm", "ogv"])
 mode = st.radio("Analysis", ["Players and ball", "Scoreboard updates"], horizontal=True)
 if mode == "Scoreboard updates":
     preset = st.selectbox("Scoreboard layout", ["France–Australia", "Custom layout"])
@@ -59,15 +59,22 @@ with st.sidebar:
     device = st.text_input("Device (blank = auto)", "")
     possession = st.checkbox("Estimate player possession (experimental)")
     goal = None
+    goal_motion = False
     if st.checkbox("Check shot and crossing candidates (fixed camera)"):
         st.caption("Enter the base of each post and a point on the field in 1280 × 720 reference coordinates. Use one stationary view throughout.")
         try:
             points = [tuple(map(int, st.text_input(label, initial).split(","))) for label, initial in
                       (("First post", "1080,280"), ("Second post", "1080,440"), ("Field point", "640,360"))]
             goal = GoalMouth(*points)
+            goal_motion = st.checkbox("Use motion near the goal for event timing",
+                                      help="Follows small bright objects moving towards the posts in a stationary view.")
         except ValueError as exc:
             st.warning(str(exc))
             st.stop()
+    local_ball = False
+    if possession or (goal and not goal_motion):
+        local_ball = st.checkbox("Recover small balls with the appearance model", value=False,
+                                 help="Checks frames with no detector ball box. White socks can resemble a ball.")
     max_frames = st.number_input("Maximum frames (0 = all)", min_value=0, value=600, step=100)
 
 if uploaded:
@@ -86,7 +93,8 @@ if uploaded:
                     pipeline = RealtimePipeline(detector_weights, pose_weights,
                                                 device=device or None, confidence=confidence)
                     metrics = pipeline.process_video(str(input_path), str(output_path),
-                                                      max_frames=max_frames or None, possession=possession, goal=goal)
+                                                      max_frames=max_frames or None, possession=possession, goal=goal, local_ball=local_ball,
+                                                      goal_motion=goal_motion)
                     video_bytes = output_path.read_bytes()
                 st.success("Processing complete")
                 show_runtime(metrics["runtime"])
@@ -103,11 +111,14 @@ if uploaded:
                 if possession:
                     rows = metrics["timeline"]
                     assigned = sum(row["possession_track_id"] is not None for row in rows)
-                    observed = sum(row["ball_source"] in {"tracked", "detected"} for row in rows)
+                    observed = sum(row["ball_source"] in {"tracked", "detected", "appearance"} for row in rows)
                     estimated = sum(row["ball_source"] == "motion" for row in rows)
                     st.write(f"Ball observed in {observed} of {len(rows)} frames. "
                              f"Motion estimates in {estimated} additional frames.")
                     st.write(f"Possession candidate assigned in {assigned} of {len(rows)} frames.")
+                    if local_ball:
+                        recovered = sum(row["ball_source"] == "appearance" for row in rows)
+                        st.write(f"Appearance model supplied {recovered} direct observations.")
                     st.caption("Yellow ring: direct observation. Blue ring: motion estimate.")
                     csv_buffer = io.StringIO()
                     writer = csv.DictWriter(csv_buffer, fieldnames=rows[0].keys())
