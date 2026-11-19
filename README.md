@@ -60,6 +60,10 @@ Select **Use football-specific detector (experimental)** and **Estimate player p
 
 The model was trained on amateur football filmed with fixed cameras. Broadcast camera movement, close-ups and cuts can affect both the detector and the tracker. Model author, training conditions and AGPL-3.0 model licence are documented in the [pinned model card](https://huggingface.co/Dura-S/reco-yolo26s-football/blob/d20231484951d4ebf3f9f2a7437aa922a4c1b395/README.md).
 
+## Review shots near a stationary goal
+
+With **Check shot and crossing candidates (fixed camera)** enabled, enter the post positions and a point on the pitch, then select **Use motion near the goal for event timing**. The dashboard shows candidate timestamps and exports them as CSV. This mode recovered one filmed penalty during development and missed two other penalties. See the [calibrations and results](docs/football-experiment.md#stationary-camera-motion-near-the-goal).
+
 ## Scoreboard updates
 
 Choose **Scoreboard updates**, upload a clip and click **Scan scoreboard**. This mode scans the full video independently of the player models and exports CSV rows with the team, old and new scores, first stable sample time and confirmation time. It requires Tesseract OCR with English language data on the system PATH (Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-eng`; macOS with Homebrew: `brew install tesseract`).

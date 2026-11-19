@@ -31,7 +31,7 @@ For independent evaluation, label one stationary view at a time. Record `event,s
 python -m src.evaluation.visual_events labels.csv goal-candidates.csv --tolerance 0.5
 ```
 
-Each prediction can match one reference of the same kind. The report gives per-kind precision, recall, F1 and signed timing errors. The scripted example has one match per kind. Independent real-match event accuracy remains unmeasured.
+Each prediction can match one reference of the same kind. The report gives per-kind precision, recall, F1 and signed timing errors. The scripted example has one match per kind. The stationary-camera motion section below reports separate tests on three real penalty clips.
 
 ## Reproduce detector training
 
@@ -99,3 +99,24 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 python -m src.training.local_ball outpu
 ```
 
 The numeric model in `configs/local-ball.npz` was trained on the CC BY 4.0 football-players-detection data attributed above. The earlier accuracy table applies to the five-epoch YOLO checkpoint alone.
+
+## Stationary-camera motion near the goal
+
+In **Players and ball**, enable **Check shot and crossing candidates (fixed camera)**, calibrate the posts on the first frame and select **Use motion near the goal for event timing**. This mode aligns a region around the goal against the first view to compensate for small translations. It compares recent aligned frames and looks for small bright objects following a consistent trajectory towards the posts across four observations. The cyan ring marks a confirmed trajectory and the cyan line follows the calibrated posts. The method pauses when alignment fails or widespread motion overwhelms the search. Pan, zoom, a busy background and an airborne ball can defeat this image-space test.
+
+The 148-frame Kyiv penalty was used to develop the motion method. Visual inspection placed the first clearly detached ball at frame 112 (3.73 s at 30 fps) and the projected centre crossing between frames 123 and 124 (about 4.12 s). The exported timestamps were 3.80 s and 4.12 s. The detector-box workflow on this clip returned no direct observations and no events. The motion workflow and the dashboard upload both returned one candidate of each kind. The interframe crossing label is approximate.
+
+Two further penalty clips were checked with the same motion settings and a fresh calibration for each. There were zero candidates on the Toulouse–Angers penalty and zero on the Samsunspor–Bandırmaspor penalty. The latter camera moves during the clip. These misses limit any claim about automatic match coverage. A synthetic wide shot and a simulated cut also produced no crossing. A projected centre crossing is a review cue and cannot settle whether the entire ball passed under the crossbar.
+
+| Source | First post | Second post | Field point |
+| --- | --- | --- | --- |
+| [Dynamo Kyiv–Arsenal Kyiv penalty, Visem](https://commons.wikimedia.org/wiki/File:FC_Dynamo_Kyiv_vs_FC_Arsenal_Kyiv_10-03-2019_(penalty_kick).webm) | 373,342 | 400,322 | 501,336 |
+| [Max-Alain Gradel penalty, Toulouse–Angers](https://commons.wikimedia.org/wiki/File:Penalty_Max-Alain_Gradel_(2018-04-21).ogv) | 768,482 | 1183,438 | 338,395 |
+| [Samsunspor–Bandırmaspor penalty](https://commons.wikimedia.org/wiki/File:Samsunspor-Band%C4%B1rmaspor_ma%C3%A7%C4%B1_(13.3.23)_penalt%C4%B1_gol%C3%BC.webm) | 754,448 | 808,462 | 653,460 |
+
+Download an original from the corresponding file page. Reproduce the Kyiv event export and timestamp comparison from the repository root:
+
+```sh
+python -m src.evaluation.goal_video kyiv-penalty.webm --first 373 342 --second 400 322 --field 501 336 > candidates.csv
+python -m src.evaluation.visual_events examples/goal-labels/kyiv-penalty.csv candidates.csv --tolerance 0.25
+```
